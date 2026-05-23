@@ -1,0 +1,134 @@
+Metadata-Version: 2.4
+Name: cell-id-mapper
+Version: 0.1.0
+Summary: Cross-reference cancer cell line IDs across DepMap, GDSC (COSMIC), and Sanger databases
+Author: Cell ID Mapper contributors
+License: MIT
+Keywords: bioinformatics,cancer,cell-line,depmap,gdsc,cosmic,sanger
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Science/Research
+Classifier: Topic :: Scientific/Engineering :: Bio-Informatics
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Provides-Extra: dev
+Requires-Dist: pytest>=8; extra == "dev"
+Requires-Dist: pytest-cov; extra == "dev"
+Dynamic: license-file
+
+# cell-id-mapper
+
+Cross-reference cancer cell line identifiers across **DepMap**, **GDSC (COSMIC)**, and **Sanger (Cell Model Passports)** databases.
+
+If you've ever stared at a spreadsheet wondering whether "A549" in your GDSC drug response data is the same cell line as `ACH-000024` in your DepMap CRISPR screen, this tool is for you.
+
+## Why
+
+Three major cancer genomics resources use three different ID systems for the same cell lines. Manually reconciling them is tedious and error-prone. This package gives you a single function call to translate between them.
+
+## Quick start
+
+```bash
+pip install cell-id-mapper
+```
+
+### Command line
+
+```bash
+# Look up by any identifier
+cell-id-mapper lookup A549
+cell-id-mapper lookup ACH-000024
+cell-id-mapper lookup 905952          # COSMIC ID
+
+# Fuzzy search
+cell-id-mapper search "MCF"
+
+# Convert between ID types
+cell-id-mapper convert A549 --from name --to cosmic
+
+# List all cell lines of a given lineage
+cell-id-mapper lineage Breast
+
+# Coverage statistics
+cell-id-mapper stats
+```
+
+### Python API
+
+```python
+from cell_id_mapper import load_mapper
+
+mapper = load_mapper()
+
+# Exact lookups
+cl = mapper.from_name("A549")
+print(cl.depmap_id)   # ACH-000024
+print(cl.cosmic_id)   # 905952
+print(cl.sanger_id)   # SIDM000218
+print(cl.lineage)     # Lung
+
+# Convenience methods
+mapper.ach_to_cosmic("ACH-000024")     # "905952"
+mapper.name_to_ach("A549")             # "ACH-000024"
+mapper.cosmic_to_name("905952")        # "A549"
+
+# Fuzzy search
+hits = mapper.search("colo")
+for h in hits:
+    print(h.cell_line_name, h.lineage)
+
+# Filter by lineage or disease
+lung_cells = mapper.by_lineage("Lung")
+melanomas = mapper.by_disease("Melanoma")
+```
+
+## Data sources
+
+The mapping table is built by merging:
+
+| Database | ID Type | Example |
+|----------|---------|---------|
+| [DepMap](https://depmap.org) | ACH-XXXXXX | `ACH-000024` |
+| [GDSC / COSMIC](https://cancer.sanger.ac.uk/cosmic) | Numeric | `905952` |
+| [Sanger Cell Model Passports](https://cellmodelpassports.sanger.ac.uk) | SIDMXXXXXX | `SIDM000218` |
+
+The bundled data includes **100+ commonly used cell lines** with full cross-references. To pull the latest complete dataset (~1,800+ cell lines), run:
+
+```bash
+pip install cell-id-mapper[update]       # installs requests, pandas
+python scripts/update_mappings.py
+```
+
+## Project structure
+
+```
+cell-id-mapper/
+├── src/cell_id_mapper/
+│   ├── __init__.py          # Package entry point
+│   ├── mapper.py            # Core CellLineMapper class
+│   ├── cli.py               # Command-line interface
+│   └── data/
+│       └── mappings.csv     # Bundled mapping table
+├── scripts/
+│   └── update_mappings.py   # Fetch latest data from DepMap & GDSC
+├── tests/
+│   └── test_mapper.py       # Pytest test suite
+├── pyproject.toml
+├── LICENSE
+└── README.md
+```
+
+## Requirements
+
+- Python 3.10+
+- No mandatory dependencies (stdlib only)
+- Optional: `requests`, `pandas`, `openpyxl` for the data updater script
+
+## License
+
+MIT. See [LICENSE](LICENSE).

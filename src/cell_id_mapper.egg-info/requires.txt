@@ -1,0 +1,4 @@
+
+[dev]
+pytest>=8
+pytest-cov
